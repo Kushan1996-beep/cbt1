@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>かいごスキルしけん CBT</title>
+<style>
+  body {
+    font-family: "Yu Gothic", "メイリオ", "Meiryo", sans-serif;
+    margin: 0; padding: 0;
+    background-color: #f9f9f9;
+  }
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background-color: #004b8d;
+    color: white;
+    padding: 12px 20px;
+    font-size: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+  #timer {
+    font-weight: bold;
+  }
+  #progress {
+    font-size: 16px;
+  }
+  main {
+    margin: 80px auto 40px;
+    max-width: 700px;
+    background: white;
+    padding: 30px 40px 40px 40px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+  }
+  .question-text {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  .choices label {
+    display: block;
+    background: #e9ecef;
+    padding: 12px 15px;
+    margin-bottom: 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 18px;
+    user-select: none;
+  }
+  input[type="radio"] {
+    margin-right: 12px;
+  }
+  .choices label:hover {
+    background: #d4d9df;
+  }
+  .buttons {
+    margin-top: 30px;
+    display: flex;
+    justify-content: space-between;
+  }
+  button {
+    background-color: #004b8d;
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    font-size: 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+  }
+  button:disabled {
+    background-color: #7a9cc6;
+    cursor: default;
+  }
+  #submit-btn {
+    background-color: #2a9d8f;
+  }
+  #result {
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 30px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div id="timer">のこりじかん: 60:00</div>
+  <div id="progress">1 / 5</div>
+</header>
+
+<main>
+  <div id="quiz-container">
+    <div class="question-text" id="question-text"></div>
+    <div class="choices" id="choices"></div>
+
+    <div class="buttons">
+      <button id="prev-btn" disabled>もどる</button>
+      <button id="next-btn" disabled>つぎへ</button>
+    </div>
+  </div>
+
+  <div id="result" style="display:none;"></div>
+</main>
+
+<script>
+  const quiz = [
+    {
+      question: "べっどから　たちあがるときに　いちばん　てきせつな　しえんは　どれですか？",
+      choices: [
+        "1. ひとりで　たつように　むりに　うながす。",
+        "2. べっどのたかさを　ちょうせいして、うでを　ささえて　たちあがらせる。",
+        "3. いそいで　たちあがらせて　ころぶのを　ふせぐ。",
+        "4. てすりを　つかわずに　たちあがらせる。"
+      ],
+      answer: 1
+    },
+    {
+      question: "にんちしょうの　りようしゃが　こんらんしたとき、てきせつな　たいおうは　どれですか？",
+      choices: [
+        "1. どなる。",
+        "2. おちついたこえで　はなしかける。",
+        "3. むしをする。",
+        "4. ふくざつな　しじを　くりかえす。"
+      ],
+      answer: 1
+    },
+    {
+      question: "じょくそうを　よぼうするために　ひつような　ケアは　どれですか？",
+      choices: [
+        "1. ながじかん　おなじ　しせいのままに　する。",
+        "2. こまめに　たいを　かえる。",
+        "3. べっどに　つなぐ。",
+        "4. そうじや　せいけつを　しない。"
+      ],
+      answer: 1
+    },
+    {
+      question: "りようしゃが　たべものを　のみこみにくそうな　とき、まず　なんにんを　よびますか？",
+      choices: [
+        "1. いちにん",
+        "2. ににん",
+        "3. さんにん",
+        "4. よにん"
+      ],
+      answer: 0
+    },
+    {
+      question: "しょくじの　あと、はを　みがくのは　なぜですか？",
+      choices: [
+        "1. はを　きれいに　するため。",
+        "2. うみあげの　ため。",
+        "3. のどを　かむため。",
+        "4. あしを　あらうため。"
+      ],
+      answer: 0
+    }
+  ];
+
+  let currentIndex = 0;
+  let score = 0;
+  const total = quiz.length;
+
+  const questionTextEl = document.getElementById('question-text');
+  const choicesEl = document.getElementById('choices');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  const progressEl = document.getElementById('progress');
+  const timerEl = document.getElementById('timer');
+  const resultEl = document.getElementById('result');
+  const quizContainer = document.getElementById('quiz-container');
+
+  // 選択済み回答を保持する配列。-1は未選択
+  let userAnswers = Array(total).fill(-1);
+
+  function loadQuestion() {
+    const q = quiz[currentIndex];
+    questionTextEl.textContent = q.question;
+    choicesEl.innerHTML = '';
+
+    q.choices.forEach((choice, idx) => {
+      const label = document.createElement('label');
+      label.style.userSelect = 'none';
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'choice';
+      radio.value = idx;
+      radio.style.marginRight = '12px';
+      if (userAnswers[currentIndex] === idx) {
+        radio.checked = true;
+        nextBtn.disabled = false;
+      }
+      radio.addEventListener('change', () => {
+        userAnswers[currentIndex] = parseInt(radio.value);
+        nextBtn.disabled = false;
+      });
+
+      label.appendChild(radio);
+      label.appendChild(document.createTextNode(choice));
+      choicesEl.appendChild(label);
+    });
+
+    progressEl.textContent = `${currentIndex + 1} / ${total}`;
+    
+    prevBtn.disabled = currentIndex === 0;
+    nextBtn.textContent = currentIndex === total -1 ? "ていしゅつ" : "つぎへ";
+    nextBtn.disabled = userAnswers[currentIndex] === -1;
+  }
+
+  function showResult() {
+    quizContainer.style.display = 'none';
+    let correctCount = 0;
+    for (let i=0; i<total; i++) {
+      if (userAnswers[i] === quiz[i].answer) correctCount++;
+    }
+    resultEl.style.display = 'block';
+    resultEl.textContent = `しけんおわりました。せいかは ${correctCount} / ${total} てんです。`;
+  }
+
+  prevBtn.addEventListener('click', () => {
+    if (currentIndex > 0) {
+      currentIndex--;
+      loadQuestion();
+    }
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (userAnswers[currentIndex] === -1) return; // 何も選んでない状態は防止
+
+    if (currentIndex < total -1) {
+      currentIndex++;
+      loadQuestion();
+    } else {
+      if (confirm("ていしゅつしてもよろしいですか？")) {
+        showResult();
+        clearInterval(timerInterval);
+      }
+    }
+  });
+
+  // タイマー（60分=3600秒）
+  let timeLeft = 60 * 60;
+
+  function updateTimer() {
+    let minutes = Math.floor(timeLeft / 60);
+    let seconds = timeLeft % 60;
+    timerEl.textContent = `のこりじかん: ${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+    if (timeLeft === 0) {
+      alert("じかんがきれました。しけんはじどうていしゅつされます。");
+      showResult();
+      clearInterval(timerInterval);
+      // 回答不可にしてもいい
+      quizContainer.style.pointerEvents = 'none';
+    }
+    timeLeft--;
+  }
+
+  const timerInterval = setInterval(updateTimer, 1000);
+
+  // 最初の問題をよみこみ
+  loadQuestion();
+
+</script>
+
+</body>
+</html>
